@@ -31,9 +31,12 @@ model LogEntry {
   content   String   // raw text typed by user
   type      String   // "wake", "sleep", "signal", "wasted", "neutral"
   duration  Int?     // minutes (if applicable)
+  quality   String?  // "deep", "focused", "neutral", "distracted", "wasted"
+  isDraft   Boolean  @default(false) // true for auto-created timer entries
   createdAt DateTime @default(now())
 
   @@index([dayId])
   @@index([timestamp])
+  @@index([isDraft])
 }
 

@@ -8,6 +8,7 @@ interface LogEntry {
   content: string
   type: string
   duration: number | null
+  quality?: string | null
 }
 
 interface LogHistoryProps {
@@ -16,22 +17,42 @@ interface LogHistoryProps {
 }
 
 export default function LogHistory({ entries, onDeleteEntry }: LogHistoryProps) {
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'signal':
-        return 'text-signal'
+  const getQualityColor = (quality: string) => {
+    switch (quality) {
+      case 'deep':
+        return 'text-deep border-deep'
+      case 'focused':
+        return 'text-focused border-focused'
+      case 'neutral':
+        return 'text-medium border-medium'
+      case 'distracted':
+        return 'text-distracted border-distracted'
       case 'wasted':
-        return 'text-wasted'
-      case 'wake':
-        return 'text-signal'
-      case 'sleep':
-        return 'text-neutral'
+        return 'text-lost border-lost'
       default:
-        return 'text-neutral'
+        return 'text-neutral border-neutral'
     }
   }
 
-  const getTypeLabel = (type: string) => {
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'signal':
+        return 'text-signal border-signal'
+      case 'wasted':
+        return 'text-wasted border-wasted'
+      case 'wake':
+        return 'text-signal border-signal'
+      case 'sleep':
+        return 'text-neutral border-neutral'
+      default:
+        return 'text-neutral border-neutral'
+    }
+  }
+
+  const getTypeLabel = (type: string, quality?: string | null) => {
+    if (quality) {
+      return quality.toUpperCase()
+    }
     return type.toUpperCase()
   }
 
@@ -62,10 +83,16 @@ export default function LogHistory({ entries, onDeleteEntry }: LogHistoryProps) 
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 space-y-3">
-                {/* Type and Duration */}
+                {/* Quality/Type Badge and Duration */}
                 <div className="flex items-center gap-3 text-xs">
-                  <span className={`tracking-wide ${getTypeColor(entry.type)}`}>
-                    {getTypeLabel(entry.type)}
+                  <span 
+                    className={`tracking-wide px-2 py-1 border ${
+                      entry.quality 
+                        ? getQualityColor(entry.quality) 
+                        : getTypeColor(entry.type)
+                    }`}
+                  >
+                    {getTypeLabel(entry.type, entry.quality)}
                   </span>
                   {entry.duration && (
                     <>

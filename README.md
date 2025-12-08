@@ -10,15 +10,20 @@ Days are defined by your wake-sleep cycle, not arbitrary calendar boundaries. Yo
 
 ## Features
 
-### V1 (Current)
+### V2 (Current)
 
+- **Live Timer**: Real-time stopwatch that tracks work as it happens with pause/resume
+- **Picture-in-Picture Mode**: Draggable, resizable floating timer window
+- **5-Level Quality System**: Deep Work, Focused, Neutral, Distracted, Wasted (color-coded)
+- **Auto-Draft Entries**: Timer creates placeholder entries (Whoop-style activity detection)
+- **Enhanced Log Entry**: Quality dropdown, custom timestamps, manual duration override
 - **Dynamic Day Boundaries**: Days start when you wake up and end when you sleep
 - **Full-Screen Logging**: Minimal, distraction-free input interface  
 - **Signal Timer**: Large, impossible-to-ignore display of high-signal work time
-- **Timeline Visualization**: Color-coded blocks showing your day from wake to sleep
-- **Log History**: Chronological list of all entries
-- **Brutalist Design**: Pure black & white with terminal aesthetics (IBM Plex Mono, #0EA5E9 accent)
-- **Manual Tagging**: Explicit tags for signal/wasted time (`[signal: 120]`, `[wasted: 45]`)
+- **Timeline Visualization**: 5-color coded blocks showing your day from wake to sleep
+- **Log History**: Chronological list with quality badges
+- **Brutalist Design**: Pure black & white with terminal aesthetics (IBM Plex Mono)
+- **Timer Persistence**: localStorage saves timer state across page refreshes
 
 ### Planned (Future)
 
@@ -57,32 +62,57 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Usage
 
-### Creating Your First Day
+### Option 1: Live Timer (Recommended)
 
-1. Click **"+ NEW LOG ENTRY"**
-2. Type: `9:30am woke up [wake]`
-3. Hit Submit
-4. Confirm "Start new day?" prompt
+**Start Tracking:**
+1. Click **"▶ START TIMER"** (bottom-left)
+2. Timer begins tracking your work
+3. Optional: Click "MINIMIZE TO PIP" for floating window
 
-### Logging Activities
+**While Working:**
+- Pause for breaks: Click "⏸ PAUSE"
+- Resume: Click "▶ RESUME"
+- PIP mode: Drag to reposition, resize from corner
 
-Type naturally like you would on a post-it note:
+**When Done:**
+1. Click **"⏹ STOP"**
+2. Add description of what you worked on
+3. Select quality level: Deep/Focused/Neutral/Distracted/Wasted
+4. Submit (duration is auto-filled from timer)
 
+### Option 2: Manual Logging
+
+**For Retroactive Entries:**
+1. Click **"+ NEW LOG ENTRY"** (bottom-right)
+2. Enter what you worked on
+3. Select quality level
+4. Check "Custom Time" to set when (for logging past activities)
+5. Check "Duration" to manually enter minutes
+6. Submit
+
+**Old Tag System (Still Works):**
 ```
-10-12 worked on alignment research [signal: 120]
-12:30pm lunch break
-1-2pm reading papers [signal: 60]
+10-12 worked on research [signal: 120]
 wasted 45min on twitter [wasted: 45]
-3-5pm deep work on codebase [signal: 120]
 ```
 
-### Closing Your Day
+### Quality Levels Guide
 
-```
-2am going to sleep [sleep]
-```
+- **Deep Work** (Blue): Flow state, complex cognitive work, peak focus
+- **Focused** (Cyan): Productive work with good concentration
+- **Neutral** (Gray): Routine tasks, emails, meetings
+- **Distracted** (Orange): Frequent interruptions, multitasking
+- **Wasted** (Red): Social media, procrastination, off-task
 
-Confirm "Close day?" prompt to end your wake-sleep cycle.
+### Day Boundaries
+
+**Starting a Day:**
+- Timer auto-creates a day if none exists
+- Or manually log: `woke up at 9am [wake]` → Confirm prompt
+
+**Ending a Day:**
+- Log: `going to sleep [sleep]` → Confirm "Close day?"
+- Days span calendar dates (e.g., wake 10am Dec 8, sleep 2am Dec 9)
 
 ## Tag Reference
 

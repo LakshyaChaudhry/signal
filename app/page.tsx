@@ -1,13 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { TimerProvider, useTimer } from '@/lib/timer-context'
 import SignalTimer from '@/components/SignalTimer'
 import TimelineView from '@/components/TimelineView'
 import LogHistory from '@/components/LogHistory'
 import LogInput from '@/components/LogInput'
 import DaySelector from '@/components/DaySelector'
 import ConfirmationModal from '@/components/ConfirmationModal'
+import LiveTimer from '@/components/LiveTimer'
+import PIPTimer from '@/components/PIPTimer'
 
 interface Day {
   id: string
@@ -24,24 +27,24 @@ interface LogEntry {
   content: string
   type: string
   duration: number | null
+  quality?: string | null
 }
 
-interface PendingEntry {
-  content: string
-  shouldPromptWake: boolean
-  shouldPromptSleep: boolean
-}
-
-export default function Home() {
+function Dashboard() {
   const [currentDay, setCurrentDay] = useState<Day | null>(null)
   const [isInputOpen, setIsInputOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showPIP, setShowPIP] = useState(false)
+  const [logInputPrefill, setLogInputPrefill] = useState<any>(null)
   
   // Day boundary prompts
-  const [pendingEntry, setPendingEntry] = useState<PendingEntry | null>(null)
+  const [pendingWakeEntry, setPendingWakeEntry] = useState<any>(null)
+  const [pendingSleepEntry, setPendingSleepEntry] = useState<any>(null)
   const [showWakePrompt, setShowWakePrompt] = useState(false)
   const [showSleepPrompt, setShowSleepPrompt] = useState(false)
+
+  const { stopTimer, startTimer, isRunning } = useTimer()
 
   // Fetch current day on mount
   useEffect(() => {
@@ -109,8 +112,13 @@ export default function Home() {
     }
   }
 
-  const createLogEntry = async (content: string, timestamp?: string) => {
-    if (!currentDay) return
+  const createLogEntry = async (data: {
+    content: string
+    quality?: string
+    timestamp?: string
+    duration?: number
+  }) => {
+    if (!currentDay) return null
 
     try {
       const res = await fetch('/api/entries', {
@@ -118,18 +126,47 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dayId: currentDay.id,
-          content,
-          timestamp: timestamp || new Date().toISOString(),
+          ...data,
         }),
       })
       
       if (!res.ok) throw new Error('Failed to create entry')
       
-      const data = await res.json()
-      setCurrentDay(data.day)
+      const result = await res.json()
+      setCurrentDay(result.day)
+      return result.entry
     } catch (err) {
       console.error('Error creating entry:', err)
       setError('Failed to create log entry')
+      return null
+    }
+  }
+
+  const updateLogEntry = async (entryId: string, data: {
+    content?: string
+    quality?: string
+    duration?: number
+    isDraft?: boolean
+  }) => {
+    try {
+      const res = await fetch('/api/entries', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entryId,
+          ...data,
+        }),
+      })
+      
+      if (!res.ok) throw new Error('Failed to update entry')
+      
+      const result = await res.json()
+      setCurrentDay(result.day)
+      return result.entry
+    } catch (err) {
+      console.error('Error updating entry:', err)
+      setError('Failed to update entry')
+      return null
     }
   }
 
@@ -141,7 +178,6 @@ export default function Home() {
       
       if (!res.ok) throw new Error('Failed to delete entry')
       
-      // Refresh current day
       await fetchCurrentDay()
     } catch (err) {
       console.error('Error deleting entry:', err)
@@ -149,90 +185,142 @@ export default function Home() {
     }
   }
 
-  const handleLogSubmit = (content: string, shouldPromptWake = false, shouldPromptSleep = false) => {
+  // Timer start handler
+  const handleTimerStart = async () => {
+    // Ensure we have a day
+    let day = currentDay
+    if (!day) {
+      const now = new Date().toISOString()
+      day = await createNewDay(now)
+      if (!day) return
+    }
+
+    // Create draft entry
+    const draftEntry = await createLogEntry({
+      content: 'Working...',
+      timestamp: new Date().toISOString(),
+      isDraft: true,
+    } as any)
+
+    if (draftEntry && day) {
+      // Start the timer with the draft entry ID
+      startTimer(day.id, draftEntry.id)
+    }
+  }
+
+  // Timer stop handler
+  const handleTimerStop = async () => {
+    const { duration, entryId } = stopTimer()
+    
+    if (!entryId) {
+      setError('No active timer entry found')
+      return
+    }
+
+    // Pre-fill the log input with timer data
+    setLogInputPrefill({
+      duration,
+      timestamp: new Date().toISOString(),
+      content: 'Working...',
+    })
+    setIsInputOpen(true)
+    setShowPIP(false)
+  }
+
+  // Log entry submission
+  const handleLogSubmit = async (data: {
+    content: string
+    quality?: string
+    timestamp?: string
+    duration?: number
+    shouldPromptWake?: boolean
+    shouldPromptSleep?: boolean
+  }) => {
     setIsInputOpen(false)
 
-    // If no current day and this looks like a wake entry, prompt to create day
-    if (!currentDay && shouldPromptWake) {
-      setPendingEntry({ content, shouldPromptWake, shouldPromptSleep })
+    // Handle wake prompt
+    if (!currentDay && data.shouldPromptWake) {
+      setPendingWakeEntry(data)
       setShowWakePrompt(true)
       return
     }
 
-    // If current day exists but this looks like a sleep entry, prompt to close day
-    if (currentDay && shouldPromptSleep) {
-      setPendingEntry({ content, shouldPromptWake, shouldPromptSleep })
+    // Handle sleep prompt
+    if (currentDay && data.shouldPromptSleep) {
+      setPendingSleepEntry(data)
       setShowSleepPrompt(true)
       return
     }
 
-    // Otherwise, just create the entry
+    // Regular entry creation
     if (currentDay) {
-      createLogEntry(content)
+      await createLogEntry(data)
     } else {
-      // No day exists and no wake keyword - create a day automatically
+      // No day exists - create one
       const now = new Date().toISOString()
-      createNewDay(now).then((newDay) => {
-        if (newDay) {
-          // Create entry after day is created
-          createLogEntry(content)
-        }
-      })
+      const newDay = await createNewDay(now)
+      if (newDay) {
+        await createLogEntry(data)
+      }
     }
+
+    // Clear prefill data
+    setLogInputPrefill(null)
   }
 
   const handleWakeConfirm = async () => {
     setShowWakePrompt(false)
     
-    if (pendingEntry) {
+    if (pendingWakeEntry) {
       const now = new Date().toISOString()
       const newDay = await createNewDay(now)
       
       if (newDay) {
-        // Create the wake entry
-        await createLogEntry(pendingEntry.content, now)
+        await createLogEntry({
+          ...pendingWakeEntry,
+          timestamp: now,
+        })
       }
     }
     
-    setPendingEntry(null)
+    setPendingWakeEntry(null)
   }
 
   const handleWakeCancel = () => {
     setShowWakePrompt(false)
     
-    // Still create the entry as a normal entry
-    if (pendingEntry && currentDay) {
-      createLogEntry(pendingEntry.content)
+    if (pendingWakeEntry && currentDay) {
+      createLogEntry(pendingWakeEntry)
     }
     
-    setPendingEntry(null)
+    setPendingWakeEntry(null)
   }
 
   const handleSleepConfirm = async () => {
     setShowSleepPrompt(false)
     
-    if (pendingEntry && currentDay) {
+    if (pendingSleepEntry && currentDay) {
       const now = new Date().toISOString()
       
-      // Create the sleep entry first
-      await createLogEntry(pendingEntry.content, now)
+      await createLogEntry({
+        ...pendingSleepEntry,
+        timestamp: now,
+      })
       
-      // Then close the day
       await closeCurrentDay(now)
     }
     
-    setPendingEntry(null)
+    setPendingSleepEntry(null)
   }
 
   const handleSleepCancel = () => {
     setShowSleepPrompt(false)
     
-    // Still create the entry but don't close the day
-    if (pendingEntry && currentDay) {
-      createLogEntry(pendingEntry.content)
+    if (pendingSleepEntry && currentDay) {
+      createLogEntry(pendingSleepEntry)
     }
     
-    setPendingEntry(null)
+    setPendingSleepEntry(null)
   }
 
   if (isLoading) {
@@ -259,7 +347,7 @@ export default function Home() {
           </motion.h1>
           
           <div className="text-neutral text-xs tracking-widest">
-            PRODUCTIVITY TRACKING
+            PRODUCTIVITY TRACKING V2
           </div>
         </div>
 
@@ -304,23 +392,47 @@ export default function Home() {
           onDeleteEntry={deleteLogEntry}
         />
 
-        {/* New Log Entry Button */}
-        <motion.button
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsInputOpen(true)}
-          className="fixed bottom-8 right-8 px-8 py-4 bg-signal text-black border-2 border-signal hover:bg-transparent hover:text-signal transition-colors duration-150 text-sm tracking-wide font-medium shadow-xl"
-        >
-          + NEW LOG ENTRY
-        </motion.button>
+        {/* Live Timer (bottom-left) */}
+        <LiveTimer
+          onStart={handleTimerStart}
+          onStop={handleTimerStop}
+          onTogglePIP={() => setShowPIP(!showPIP)}
+          isPIPVisible={showPIP}
+        />
+
+        {/* PIP Timer (when minimized) */}
+        <AnimatePresence>
+          {showPIP && isRunning && (
+            <PIPTimer
+              onStop={handleTimerStop}
+              onMaximize={() => setShowPIP(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* New Log Entry Button (bottom-right) */}
+        {!isRunning && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsInputOpen(true)}
+            className="fixed bottom-8 right-8 px-8 py-4 bg-signal text-black border-2 border-signal hover:bg-transparent hover:text-signal transition-colors duration-150 text-sm tracking-wide font-medium shadow-xl"
+          >
+            + NEW LOG ENTRY
+          </motion.button>
+        )}
 
         {/* Log Input Modal */}
         <LogInput
           isOpen={isInputOpen}
-          onClose={() => setIsInputOpen(false)}
+          onClose={() => {
+            setIsInputOpen(false)
+            setLogInputPrefill(null)
+          }}
           onSubmit={handleLogSubmit}
+          prefillData={logInputPrefill}
         />
 
         {/* Wake Confirmation Modal */}
@@ -349,3 +461,10 @@ export default function Home() {
   )
 }
 
+export default function Home() {
+  return (
+    <TimerProvider>
+      <Dashboard />
+    </TimerProvider>
+  )
+}

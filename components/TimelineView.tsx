@@ -9,6 +9,7 @@ interface LogEntry {
   content: string
   type: string
   duration: number | null
+  quality?: string | null
 }
 
 interface TimelineViewProps {
@@ -22,6 +23,7 @@ interface TimelineBlock {
   startMinute: number
   durationMinutes: number
   type: string
+  quality?: string | null
   content: string
   timestamp: string
 }
@@ -46,6 +48,7 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
         startMinute: minutesFromWake,
         durationMinutes: entry.duration || 0,
         type: entry.type,
+        quality: entry.quality,
         content: entry.content,
         timestamp: entry.timestamp,
       }
@@ -65,7 +68,26 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
     })
   }
 
-  const getBlockColor = (type: string) => {
+  const getBlockColor = (type: string, quality?: string) => {
+    // Use quality-based colors if available
+    if (quality) {
+      switch (quality) {
+        case 'deep':
+          return 'bg-deep'
+        case 'focused':
+          return 'bg-focused'
+        case 'neutral':
+          return 'bg-medium'
+        case 'distracted':
+          return 'bg-distracted'
+        case 'wasted':
+          return 'bg-lost'
+        default:
+          return 'bg-neutral'
+      }
+    }
+    
+    // Fallback to old type-based colors
     switch (type) {
       case 'signal':
         return 'bg-signal'
@@ -131,7 +153,7 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
                 delay: index * 0.05,
                 ease: 'easeOut' 
               }}
-              className={`absolute h-full ${getBlockColor(block.type)} cursor-pointer hover:opacity-80 transition-opacity`}
+              className={`absolute h-full ${getBlockColor(block.type, block.quality || undefined)} cursor-pointer hover:opacity-80 transition-opacity`}
               style={{ left: `${getBlockPosition(block.startMinute)}%` }}
               onClick={() => setSelectedBlock(selectedBlock === block.id ? null : block.id)}
             >
@@ -168,7 +190,7 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
             .map(block => (
               <div key={block.id} className="space-y-2">
                 <div className="text-signal text-sm tracking-wide">
-                  {block.type.toUpperCase()} • {block.durationMinutes} MINUTES
+                  {block.quality ? block.quality.toUpperCase() : block.type.toUpperCase()} • {block.durationMinutes} MINUTES
                 </div>
                 <div className="text-white text-base">
                   {block.content}
@@ -186,18 +208,26 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
       )}
 
       {/* Legend */}
-      <div className="flex justify-center gap-8 text-xs">
+      <div className="flex justify-center gap-4 text-xs flex-wrap">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-signal"></div>
-          <span className="text-neutral">SIGNAL</span>
+          <div className="w-4 h-4 bg-deep"></div>
+          <span className="text-neutral">DEEP</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-wasted"></div>
-          <span className="text-neutral">WASTED</span>
+          <div className="w-4 h-4 bg-focused"></div>
+          <span className="text-neutral">FOCUSED</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-neutral"></div>
+          <div className="w-4 h-4 bg-medium"></div>
           <span className="text-neutral">NEUTRAL</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-distracted"></div>
+          <span className="text-neutral">DISTRACTED</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-lost"></div>
+          <span className="text-neutral">WASTED</span>
         </div>
       </div>
     </div>
