@@ -14,9 +14,10 @@ interface LogEntry {
 interface LogHistoryProps {
   entries: LogEntry[]
   onDeleteEntry?: (entryId: string) => void
+  onEditEntry?: (entry: LogEntry) => void
 }
 
-export default function LogHistory({ entries, onDeleteEntry }: LogHistoryProps) {
+export default function LogHistory({ entries, onDeleteEntry, onEditEntry }: LogHistoryProps) {
   const getQualityColor = (quality: string) => {
     switch (quality) {
       case 'deep':
@@ -121,16 +122,27 @@ export default function LogHistory({ entries, onDeleteEntry }: LogHistoryProps) 
                 </div>
               </div>
 
-              {/* Delete button (appears on hover) */}
-              {onDeleteEntry && (
-                <button
-                  onClick={() => onDeleteEntry(entry.id)}
-                  className="opacity-0 group-hover:opacity-100 text-neutral hover:text-white transition-opacity duration-150 text-xs tracking-wide px-3 py-1 border border-neutral hover:border-white"
-                  title="Delete entry"
-                >
-                  DELETE
-                </button>
-              )}
+              {/* Edit and Delete buttons (appear on hover) */}
+              <div className="opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity duration-150">
+                {onEditEntry && (
+                  <button
+                    onClick={() => onEditEntry(entry)}
+                    className="text-neutral hover:text-white text-xs tracking-wide px-3 py-1 border border-neutral hover:border-white"
+                    title="Edit entry"
+                  >
+                    EDIT
+                  </button>
+                )}
+                {onDeleteEntry && (
+                  <button
+                    onClick={() => onDeleteEntry(entry.id)}
+                    className="text-neutral hover:text-white text-xs tracking-wide px-3 py-1 border border-neutral hover:border-white"
+                    title="Delete entry"
+                  >
+                    DELETE
+                  </button>
+                )}
+              </div>
             </div>
           </motion.div>
         ))}

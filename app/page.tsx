@@ -14,6 +14,7 @@ import LogHistory from '@/components/LogHistory'
 import LogInput from '@/components/LogInput'
 import ConfirmationModal from '@/components/ConfirmationModal'
 import PIPTimer from '@/components/PIPTimer'
+import FloatingActionButtons from '@/components/FloatingActionButtons'
 
 interface Day {
   id: string
@@ -35,11 +36,15 @@ interface LogEntry {
 
 function Dashboard() {
   const [currentDay, setCurrentDay] = useState<Day | null>(null)
+  const [currentDayId, setCurrentDayId] = useState<string | null>(null)
+  const [previousDayId, setPreviousDayId] = useState<string | null>(null)
+  const [nextDayId, setNextDayId] = useState<string | null>(null)
   const [isInputOpen, setIsInputOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showPIP, setShowPIP] = useState(false)
   const [logInputPrefill, setLogInputPrefill] = useState<any>(null)
+  const [editingEntry, setEditingEntry] = useState<LogEntry | null>(null)
   
   // Day boundary prompts
   const [pendingWakeEntry, setPendingWakeEntry] = useState<any>(null)
@@ -59,17 +64,116 @@ function Dashboard() {
     try {
       setIsLoading(true)
       setError(null)
-      const res = await fetch('/api/days')
+      const url = currentDayId ? `/api/days?dayId=${currentDayId}` : '/api/days'
+      const res = await fetch(url)
       const data = await res.json()
       
       if (data.day) {
         setCurrentDay(data.day)
+        setCurrentDayId(data.day.id)
+        setPreviousDayId(data.previousDayId)
+        setNextDayId(data.nextDayId)
       }
     } catch (err) {
       console.error('Error fetching day:', err)
       setError('Failed to fetch day data')
     } finally {
       setIsLoading(false)
+    }
+  }
+  
+  const fetchDayById = async (dayId: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const res = await fetch(`/api/days?dayId=${dayId}`)
+      const data = await res.json()
+      
+      if (data.day) {
+        setCurrentDay(data.day)
+        setCurrentDayId(data.day.id)
+        setPreviousDayId(data.previousDayId)
+        setNextDayId(data.nextDayId)
+      }
+    } catch (err) {
+      console.error('Error fetching day:', err)
+      setError('Failed to fetch day')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  const handlePreviousDay = () => {
+    if (previousDayId) {
+      fetchDayById(previousDayId)
+    }
+  }
+  
+  const handleNextDay = () => {
+    if (nextDayId) {
+      fetchDayById(nextDayId)
+    }
+  }
+  
+  const handleUpdateWakeTime = async (newWakeTime: string) => {
+    if (!currentDay) return
+    
+    try {
+      const res = await fetch('/api/days', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dayId: currentDay.id,
+          wakeTime: newWakeTime,
+        }),
+      })
+      
+      if (!res.ok) throw new Error('Failed to update wake time')
+      
+      const data = await res.json()
+      setCurrentDay(data.day)
+    } catch (err) {
+      console.error('Error updating wake time:', err)
+      setError('Failed to update wake time')
+    }
+  }
+  
+  const handleEditEntry = (entry: LogEntry) => {
+    setEditingEntry(entry)
+    setLogInputPrefill({
+      content: entry.content,
+      quality: entry.quality || undefined,
+      duration: entry.duration || undefined,
+      timestamp: entry.timestamp,
+    })
+    setIsInputOpen(true)
+  }
+  
+  const updateLogEntry = async (entryId: string, data: {
+    content?: string
+    quality?: string
+    duration?: number
+  }) => {
+    try {
+      const res = await fetch('/api/entries', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entryId,
+          ...data,
+          isDraft: false,
+        }),
+      })
+      
+      if (!res.ok) throw new Error('Failed to update entry')
+      
+      const result = await res.json()
+      setCurrentDay(result.day)
+      return result.entry
+    } catch (err) {
+      console.error('Error updating entry:', err)
+      setError('Failed to update entry')
+      return null
     }
   }
 
@@ -218,6 +322,18 @@ function Dashboard() {
   }) => {
     setIsInputOpen(false)
 
+    // If editing an existing entry, update it
+    if (editingEntry) {
+      await updateLogEntry(editingEntry.id, {
+        content: data.content,
+        quality: data.quality,
+        duration: data.duration,
+      })
+      setEditingEntry(null)
+      setLogInputPrefill(null)
+      return
+    }
+
     if (!currentDay && data.shouldPromptWake) {
       setPendingWakeEntry(data)
       setShowWakePrompt(true)
@@ -305,7 +421,14 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-black">
       {/* Day Status Bar */}
-      <DayStatusBar currentDay={currentDay} />
+      <DayStatusBar 
+        currentDay={currentDay}
+        onPreviousDay={handlePreviousDay}
+        onNextDay={handleNextDay}
+        onUpdateWakeTime={handleUpdateWakeTime}
+        hasPrevious={!!previousDayId}
+        hasNext={!!nextDayId}
+      />
 
       {/* Sticky Header (visible when scrolled) */}
       <StickyHeader
@@ -317,15 +440,29 @@ function Dashboard() {
 
       {/* Hero Section (Above the fold) */}
       <section className="min-h-screen flex flex-col items-center justify-center px-4 space-y-12">
+        {/* Signal Branding */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="text-white text-3xl font-bold tracking-tight mb-8"
+        >
+          SIGNAL
+        </motion.div>
+        
         {/* Hero Timer */}
         <HeroTimer signalMinutes={currentDay?.signalTotal || 0} />
 
-        {/* Action Buttons */}
-        <HeroActions
-          onStartFocus={handleTimerStart}
-          onAddLog={() => setIsInputOpen(true)}
-          isTimerRunning={isRunning}
-        />
+        {/* Action Buttons (only visible when not scrolled) */}
+        {!isScrolled && (
+          <HeroActions
+            onStartFocus={handleTimerStart}
+            onAddLog={() => setIsInputOpen(true)}
+            onPauseResume={handlePauseResume}
+            isTimerRunning={isRunning}
+            isTimerPaused={isPaused}
+          />
+        )}
 
         {/* Daily Progress Bar */}
         {currentDay && (
@@ -378,9 +515,21 @@ function Dashboard() {
           <LogHistory
             entries={currentDay.entries || []}
             onDeleteEntry={deleteLogEntry}
+            onEditEntry={handleEditEntry}
           />
         </motion.section>
       )}
+
+      {/* Floating Action Buttons (visible when scrolled) */}
+      <FloatingActionButtons
+        isVisible={isScrolled && !showPIP}
+        isTimerRunning={isRunning}
+        isTimerPaused={isPaused}
+        onStartFocus={handleTimerStart}
+        onPauseResume={handlePauseResume}
+        onAddLog={() => setIsInputOpen(true)}
+        onTogglePIP={() => setShowPIP(true)}
+      />
 
       {/* Error Display */}
       <AnimatePresence>
@@ -418,6 +567,7 @@ function Dashboard() {
         onClose={() => {
           setIsInputOpen(false)
           setLogInputPrefill(null)
+          setEditingEntry(null)
         }}
         onSubmit={handleLogSubmit}
         prefillData={logInputPrefill}

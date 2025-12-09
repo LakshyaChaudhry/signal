@@ -24,35 +24,12 @@ export default function StickyHeader({ isVisible, signalMinutes, onPauseResume, 
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="fixed top-0 left-0 right-0 z-40 bg-black border-b-2 border-neutral h-16 flex items-center justify-between px-8"
         >
-          {/* Logo */}
+          {/* Logo - Left */}
           <div className="text-white text-xl font-bold tracking-tight">
             SIGNAL
           </div>
 
-          {/* Compact Timer */}
-          <div className="flex items-center gap-6">
-            <HeroTimer signalMinutes={signalMinutes} isCompact={true} />
-            
-            {/* Timer Controls (if running) */}
-            {isRunning && (
-              <div className="flex gap-2">
-                <button
-                  onClick={onPauseResume}
-                  className="px-3 py-1 text-xs border border-neutral text-neutral hover:text-white hover:border-white transition-colors"
-                >
-                  {isPaused ? '▶' : '⏸'}
-                </button>
-                <button
-                  onClick={onStop}
-                  className="px-3 py-1 text-xs border border-white text-white hover:bg-white hover:text-black transition-colors"
-                >
-                  ⏹ STOP
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Version */}
+          {/* Version - Right */}
           <div className="text-neutral text-xs tracking-widest">
             v0.1
           </div>
