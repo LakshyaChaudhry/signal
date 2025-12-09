@@ -131,7 +131,11 @@ function Dashboard() {
       if (!res.ok) throw new Error('Failed to update wake time')
       
       const data = await res.json()
+      // BUG FIX: Update all navigation state, not just currentDay
       setCurrentDay(data.day)
+      setCurrentDayId(data.day.id)
+      setPreviousDayId(data.previousDayId || null)
+      setNextDayId(data.nextDayId || null)
     } catch (err) {
       console.error('Error updating wake time:', err)
       setError('Failed to update wake time')
@@ -188,7 +192,11 @@ function Dashboard() {
       if (!res.ok) throw new Error('Failed to create day')
       
       const data = await res.json()
+      // BUG FIX: Update all navigation state, not just currentDay
       setCurrentDay(data.day)
+      setCurrentDayId(data.day.id)
+      setPreviousDayId(data.previousDayId || null)
+      setNextDayId(data.nextDayId || null)
       return data.day
     } catch (err) {
       console.error('Error creating day:', err)
@@ -213,7 +221,11 @@ function Dashboard() {
       if (!res.ok) throw new Error('Failed to close day')
       
       const data = await res.json()
+      // BUG FIX: Update all navigation state, not just currentDay
       setCurrentDay(data.day)
+      setCurrentDayId(data.day.id)
+      setPreviousDayId(data.previousDayId || null)
+      setNextDayId(data.nextDayId || null)
     } catch (err) {
       console.error('Error closing day:', err)
       setError('Failed to close day')

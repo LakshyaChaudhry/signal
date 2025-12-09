@@ -37,13 +37,24 @@ export default function DayStatusBar({ currentDay, onPreviousDay, onNextDay, onU
   const isToday = !currentDay.sleepTime
 
   const handleEditWakeTime = () => {
-    const formatted = wakeTime.toISOString().slice(0, 16)
+    // BUG FIX: Convert UTC to local time for datetime-local input
+    // datetime-local expects format: YYYY-MM-DDTHH:mm in LOCAL timezone
+    const year = wakeTime.getFullYear()
+    const month = String(wakeTime.getMonth() + 1).padStart(2, '0')
+    const day = String(wakeTime.getDate()).padStart(2, '0')
+    const hours = String(wakeTime.getHours()).padStart(2, '0')
+    const minutes = String(wakeTime.getMinutes()).padStart(2, '0')
+    const formatted = `${year}-${month}-${day}T${hours}:${minutes}`
+    
     setTempWakeTime(formatted)
     setIsEditingWakeTime(true)
   }
 
   const handleSaveWakeTime = () => {
     if (tempWakeTime) {
+      // BUG FIX: datetime-local gives us local time string, convert to UTC ISO
+      // Create Date from local time string (browser interprets as local)
+      // Then convert to ISO string for storage (converts to UTC)
       onUpdateWakeTime(new Date(tempWakeTime).toISOString())
     }
     setIsEditingWakeTime(false)
