@@ -52,13 +52,54 @@ function Dashboard() {
   const [showWakePrompt, setShowWakePrompt] = useState(false)
   const [showSleepPrompt, setShowSleepPrompt] = useState(false)
 
-  const { stopTimer, startTimer, pauseTimer, resumeTimer, isRunning, isPaused } = useTimer()
+  const { stopTimer, startTimer, pauseTimer, resumeTimer, resetTimer, isRunning, isPaused, currentEntryId: timerEntryId, currentDayId: timerDayId } = useTimer()
   const { isScrolled } = useScrollPosition()
 
   // Fetch current day on mount
   useEffect(() => {
     fetchCurrentDay()
   }, [])
+  
+  // Validate timer state on mount - check if draft entry still exists
+  useEffect(() => {
+    const validateTimerState = async () => {
+      console.log('[Timer Validation] Running validation...', { isRunning, timerEntryId, timerDayId })
+      if (isRunning && timerEntryId && timerDayId) {
+        try {
+          console.log('[Timer Validation] Checking draft entry existence...')
+          // Check if the draft entry still exists (include drafts in query)
+          const res = await fetch(`/api/entries?dayId=${timerDayId}&includeDrafts=true`)
+          const data = await res.json()
+          console.log('[Timer Validation] Fetched entries:', data.entries?.length, 'entries')
+          
+          // Look for the draft entry
+          const draftExists = data.entries?.some((entry: any) => 
+            entry.id === timerEntryId && entry.isDraft
+          )
+          
+          if (!draftExists) {
+            console.warn('[Timer Validation] ❌ Draft entry not found - resetting timer')
+            // Draft entry is missing, reset the timer
+            resetTimer()
+          } else {
+            console.log('[Timer Validation] ✅ Draft entry exists - timer is valid')
+          }
+        } catch (err) {
+          console.error('[Timer Validation] Error:', err)
+          // If validation fails, reset timer to be safe
+          resetTimer()
+        }
+      } else {
+        console.log('[Timer Validation] Skipped - timer not running or missing IDs')
+      }
+    }
+    
+    // Only validate after initial loading is done
+    if (!isLoading) {
+      console.log('[Timer Validation] isLoading = false, running validation')
+      validateTimerState()
+    }
+  }, [isLoading, isRunning, timerEntryId, timerDayId, resetTimer]) // Run once after initial load
 
   const fetchCurrentDay = async () => {
     try {

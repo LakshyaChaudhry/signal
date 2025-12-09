@@ -18,6 +18,7 @@ interface TimerContextType {
   isPaused: boolean
   elapsedTime: number
   currentEntryId: string | null
+  currentDayId: string | null
   formattedTime: string
   
   // Actions
@@ -54,35 +55,62 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   })
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const hasLoadedFromStorage = useRef(false)
   
   // Load state from localStorage on mount
   useEffect(() => {
+    // Only load once, even in strict mode
+    if (hasLoadedFromStorage.current) {
+      console.log('[Timer Context] Already loaded, skipping')
+      return
+    }
+    
     const savedState = localStorage.getItem(STORAGE_KEY)
+    console.log('[Timer Context] Loading from localStorage:', savedState)
     if (savedState) {
       try {
         const parsed = JSON.parse(savedState) as TimerState
-        setTimerState(parsed)
+        console.log('[Timer Context] Parsed state:', parsed)
         
-        // If timer was running when page closed, resume it
+        // If timer was running when page closed, recalculate elapsed time
         if (parsed.isRunning && !parsed.isPaused && parsed.startTime) {
-          // Recalculate elapsed time accounting for time passed while page was closed
+          console.log('[Timer Context] Timer was running - restoring with recalculated time...')
           const now = Date.now()
-          const timePassedWhileClosed = now - parsed.startTime
-          setTimerState(prev => ({
-            ...prev,
-            elapsedTime: parsed.elapsedTime + timePassedWhileClosed,
+          
+          // Calculate total elapsed time including time while page was closed
+          const totalElapsed = parsed.pausedElapsedTime + (now - parsed.startTime)
+          
+          // Set state with recalculated time in ONE call
+          // pausedElapsedTime = total time so far (so tick can continue from here)
+          // startTime = now (fresh start for ticking)
+          setTimerState({
+            ...parsed,
+            pausedElapsedTime: totalElapsed,
+            elapsedTime: totalElapsed,
             startTime: now,
-          }))
+          })
+          console.log('[Timer Context] Timer restored successfully with elapsed:', totalElapsed, 'ms')
+        } else {
+          // Timer was paused or not running, restore as-is
+          setTimerState(parsed)
         }
       } catch (error) {
         console.error('Failed to parse timer state from localStorage:', error)
       }
+    } else {
+      console.log('[Timer Context] No saved state found')
     }
+    
+    // Mark that we've loaded from storage
+    hasLoadedFromStorage.current = true
   }, [])
   
-  // Save state to localStorage whenever it changes
+  // Save state to localStorage whenever it changes (but not during initial load)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(timerState))
+    if (hasLoadedFromStorage.current) {
+      console.log('[Timer Context] Saving to localStorage:', timerState)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(timerState))
+    }
   }, [timerState])
   
   // Timer tick effect
@@ -192,6 +220,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     isPaused: timerState.isPaused,
     elapsedTime: timerState.elapsedTime,
     currentEntryId: timerState.currentEntryId,
+    currentDayId: timerState.currentDayId,
     formattedTime: formatElapsedTime(timerState.elapsedTime),
     startTimer,
     pauseTimer,
