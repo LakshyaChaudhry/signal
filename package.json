@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "cleanup:days": "tsx scripts/cleanup-duplicate-days.ts",
-    "cleanup:days:confirm": "tsx scripts/cleanup-duplicate-days.ts --cleanup"
+    "cleanup:days": "node scripts/cleanup-duplicate-days.js",
+    "cleanup:days:confirm": "node scripts/cleanup-duplicate-days.js --cleanup"
   },
   "dependencies": {
     "react": "^18.3.1",
