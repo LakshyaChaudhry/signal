@@ -52,6 +52,14 @@ export default function DayStatusBar({ currentDay, onPreviousDay, onNextDay, onU
 
   const handleSaveWakeTime = () => {
     if (tempWakeTime) {
+      // Validate: wake time cannot be in the future
+      const wakeDate = new Date(tempWakeTime)
+      const now = new Date()
+      if (wakeDate > now) {
+        alert('Cannot set wake time in the future')
+        return
+      }
+      
       // BUG FIX: datetime-local gives us local time string, convert to UTC ISO
       // Create Date from local time string (browser interprets as local)
       // Then convert to ISO string for storage (converts to UTC)

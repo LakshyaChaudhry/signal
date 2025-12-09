@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST create new day
+// POST create new day OR reopen existing day
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -122,7 +122,117 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Close any open days before creating a new one
+    // Validate: wake time cannot be in the future
+    const wakeDate = new Date(wakeTime)
+    const now = new Date()
+    if (wakeDate > now) {
+      return NextResponse.json(
+        { error: 'Cannot create a day in the future' },
+        { status: 400 }
+      )
+    }
+
+    // Check if there's already an open day
+    const existingOpenDay = await prisma.day.findFirst({
+      where: {
+        sleepTime: null,
+      },
+      include: {
+        entries: {
+          where: { isDraft: false },
+          orderBy: {
+            timestamp: 'asc',
+          },
+        },
+      },
+    })
+
+    // If there's an open day, return it instead of creating a new one
+    if (existingOpenDay) {
+      // Get navigation info
+      const allDays = await prisma.day.findMany({
+        orderBy: { wakeTime: 'desc' },
+        select: { id: true, wakeTime: true },
+      })
+      
+      const currentIndex = allDays.findIndex(d => d.id === existingOpenDay.id)
+      const previousDayId = (currentIndex >= 0 && currentIndex < allDays.length - 1) 
+        ? allDays[currentIndex + 1].id 
+        : null
+      const nextDayId = (currentIndex > 0) 
+        ? allDays[currentIndex - 1].id 
+        : null
+
+      return NextResponse.json({ 
+        day: existingOpenDay,
+        previousDayId,
+        nextDayId,
+        reopened: true // Flag to indicate we returned an existing day
+      }, { status: 200 })
+    }
+
+    // Get the most recent day to check its date
+    const mostRecentDay = await prisma.day.findFirst({
+      orderBy: {
+        wakeTime: 'desc',
+      },
+      select: {
+        id: true,
+        wakeTime: true,
+        sleepTime: true,
+      },
+    })
+
+    // Check if the most recent day is from today
+    if (mostRecentDay) {
+      const mostRecentWakeDate = new Date(mostRecentDay.wakeTime)
+      const todayStart = new Date(now)
+      todayStart.setHours(0, 0, 0, 0)
+      
+      // If the most recent day was created today, reopen it instead of creating a new one
+      if (mostRecentWakeDate >= todayStart && mostRecentDay.sleepTime) {
+        // Reopen the day by clearing its sleepTime
+        const reopenedDay = await prisma.day.update({
+          where: { id: mostRecentDay.id },
+          data: {
+            sleepTime: null,
+            wakeTime: new Date(wakeTime), // Update wake time to now
+          },
+          include: {
+            entries: {
+              where: { isDraft: false },
+              orderBy: {
+                timestamp: 'asc',
+              },
+            },
+          },
+        })
+
+        // Get navigation info
+        const allDays = await prisma.day.findMany({
+          orderBy: { wakeTime: 'desc' },
+          select: { id: true, wakeTime: true },
+        })
+        
+        const currentIndex = allDays.findIndex(d => d.id === reopenedDay.id)
+        const previousDayId = (currentIndex >= 0 && currentIndex < allDays.length - 1) 
+          ? allDays[currentIndex + 1].id 
+          : null
+        const nextDayId = (currentIndex > 0) 
+          ? allDays[currentIndex - 1].id 
+          : null
+
+        return NextResponse.json({ 
+          day: reopenedDay,
+          previousDayId,
+          nextDayId,
+          reopened: true
+        }, { status: 200 })
+      }
+    }
+
+    // No existing open day and no today day to reopen, create a new one
+    // But first close any other open days (shouldn't happen but just in case)
     await prisma.day.updateMany({
       where: {
         sleepTime: null,

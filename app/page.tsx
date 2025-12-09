@@ -216,6 +216,14 @@ function Dashboard() {
 
   const createNewDay = async (wakeTime: string) => {
     try {
+      // Validate: wake time cannot be in the future
+      const wakeDate = new Date(wakeTime)
+      const now = new Date()
+      if (wakeDate > now) {
+        setError('Cannot create a day in the future')
+        return null
+      }
+      
       const res = await fetch('/api/days', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -415,15 +423,22 @@ function Dashboard() {
     
     if (pendingWakeEntry) {
       const now = new Date().toISOString()
-      const newDay = await createNewDay(now)
+      // This will now either create a new day, reopen today's day, or return existing open day
+      const day = await createNewDay(now)
       
-      if (newDay) {
+      if (day) {
+        // Set the day as current (whether it's new, reopened, or existing)
+        setCurrentDay(day)
+        setCurrentDayId(day.id)
+        
+        // Log the wake entry to this day
         await createLogEntry({
           ...pendingWakeEntry,
           timestamp: now,
         })
-        // Refetch to update navigation after creating new day
-        await fetchCurrentDay()
+        
+        // Fetch the day to get updated navigation and entries
+        await fetchDayById(day.id)
       }
     }
     

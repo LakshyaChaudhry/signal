@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "cleanup:days": "tsx scripts/cleanup-duplicate-days.ts",
+    "cleanup:days:confirm": "tsx scripts/cleanup-duplicate-days.ts --cleanup"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -26,7 +28,8 @@
     "tailwindcss": "^3.4.0",
     "prisma": "^5.20.0",
     "eslint": "^8.56.0",
-    "eslint-config-next": "^14.2.0"
+    "eslint-config-next": "^14.2.0",
+    "tsx": "^4.7.0"
   }
 }
 
