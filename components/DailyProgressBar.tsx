@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 interface LogEntry {
   id: string
@@ -18,6 +18,26 @@ interface DailyProgressBarProps {
 }
 
 export default function DailyProgressBar({ wakeTime, sleepTime, entries }: DailyProgressBarProps) {
+  const [hoveredBlock, setHoveredBlock] = useState<string | null>(null)
+  
+  const getStripeBackground = (pattern: string) => {
+    // Create diagonal stripe patterns using CSS repeating-linear-gradient
+    switch (pattern) {
+      case 'deep':
+        return 'repeating-linear-gradient(45deg, transparent, transparent 2px, #0EA5E9 2px, #0EA5E9 4px)'
+      case 'focused':
+        return 'repeating-linear-gradient(45deg, transparent, transparent 2px, #06B6D4 2px, #06B6D4 4px)'
+      case 'neutral':
+        return 'repeating-linear-gradient(45deg, transparent, transparent 3px, #808080 3px, #808080 5px)'
+      case 'distracted':
+        return 'repeating-linear-gradient(-45deg, transparent, transparent 2px, #F59E0B 2px, #F59E0B 4px)'
+      case 'wasted':
+        return 'repeating-linear-gradient(-45deg, transparent, transparent 1px, #EF4444 1px, #EF4444 3px)'
+      default:
+        return 'repeating-linear-gradient(45deg, transparent, transparent 3px, #808080 3px, #808080 5px)'
+    }
+  }
+  
   const progressBlocks = useMemo(() => {
     const wake = new Date(wakeTime)
     const sleep = sleepTime ? new Date(sleepTime) : new Date()
@@ -32,37 +52,23 @@ export default function DailyProgressBar({ wakeTime, sleepTime, entries }: Daily
         const entryTime = new Date(entry.timestamp)
         const minutesFromWake = Math.floor((entryTime.getTime() - wake.getTime()) / (1000 * 60))
         
-        // Determine color based on quality or type
-        let colorClass = 'bg-neutral'
+        // Determine pattern based on quality or type
+        let patternId = 'neutral'
         if (entry.quality) {
-          switch (entry.quality) {
-            case 'deep':
-              colorClass = 'bg-deep'
-              break
-            case 'focused':
-              colorClass = 'bg-focused'
-              break
-            case 'neutral':
-              colorClass = 'bg-medium'
-              break
-            case 'distracted':
-              colorClass = 'bg-distracted'
-              break
-            case 'wasted':
-              colorClass = 'bg-lost'
-              break
-          }
+          patternId = entry.quality
         } else if (entry.type === 'signal') {
-          colorClass = 'bg-signal'
+          patternId = 'deep'
         } else if (entry.type === 'wasted') {
-          colorClass = 'bg-wasted'
+          patternId = 'wasted'
         }
         
         return {
           id: entry.id,
           start: (minutesFromWake / totalMinutes) * 100,
           width: ((entry.duration || 0) / totalMinutes) * 100,
-          color: colorClass,
+          pattern: patternId,
+          quality: entry.quality || entry.type,
+          duration: entry.duration || 0,
         }
       })
   }, [wakeTime, sleepTime, entries])
@@ -93,27 +99,42 @@ export default function DailyProgressBar({ wakeTime, sleepTime, entries }: Daily
         <span>{sleep ? formatTime(sleep) : 'NOW'}</span>
       </div>
       
-      {/* Progress bar */}
-      <div className="relative h-10 bg-neutral bg-opacity-10 border-2 border-neutral overflow-hidden">
+      {/* Progress bar with diagonal stripe patterns */}
+      <div className="relative h-10 bg-transparent border border-neutral overflow-hidden">
         {progressBlocks.map((block, index) => (
           <motion.div
             key={block.id}
             initial={{ width: 0, opacity: 0 }}
             animate={{ 
               width: `${block.width}%`,
-              opacity: 1 
+              opacity: hoveredBlock === block.id ? 0.9 : 0.6
             }}
             transition={{ 
               duration: 0.3,
               delay: 0.5 + (index * 0.05),
               ease: 'easeOut'
             }}
-            className={`absolute h-full ${block.color}`}
-            style={{ left: `${block.start}%` }}
-          />
+            className="absolute h-full cursor-pointer transition-opacity"
+            style={{ 
+              left: `${block.start}%`,
+              background: getStripeBackground(block.pattern),
+            }}
+            onMouseEnter={() => setHoveredBlock(block.id)}
+            onMouseLeave={() => setHoveredBlock(null)}
+          >
+            {/* Hover tooltip */}
+            {hoveredBlock === block.id && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black border border-white text-white text-[10px] whitespace-nowrap z-20"
+              >
+                {block.quality?.toUpperCase()} • {block.duration}min
+              </motion.div>
+            )}
+          </motion.div>
         ))}
       </div>
     </motion.div>
   )
 }
-

@@ -259,6 +259,9 @@ function Dashboard() {
       setCurrentDayId(data.day.id)
       setPreviousDayId(data.previousDayId || null)
       setNextDayId(data.nextDayId || null)
+      
+      // Refetch to update navigation after closing day
+      await fetchCurrentDay()
     } catch (err) {
       console.error('Error closing day:', err)
       setError('Failed to close day')
@@ -380,13 +383,15 @@ function Dashboard() {
       return
     }
 
-    if (!currentDay && data.shouldPromptWake) {
+    // Check if we need to create a new day (no current day OR current day is closed)
+    if ((!currentDay || currentDay.sleepTime) && data.shouldPromptWake) {
       setPendingWakeEntry(data)
       setShowWakePrompt(true)
       return
     }
 
-    if (currentDay && data.shouldPromptSleep) {
+    // Check if we should close the current day
+    if (currentDay && !currentDay.sleepTime && data.shouldPromptSleep) {
       setPendingSleepEntry(data)
       setShowSleepPrompt(true)
       return
@@ -417,6 +422,8 @@ function Dashboard() {
           ...pendingWakeEntry,
           timestamp: now,
         })
+        // Refetch to update navigation after creating new day
+        await fetchCurrentDay()
       }
     }
     
