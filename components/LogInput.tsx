@@ -52,8 +52,15 @@ export default function LogInput({ isOpen, onClose, onSubmit, prefillData }: Log
           setUseManualDuration(true)
         }
         if (prefillData.timestamp) {
+          // BUG FIX: Convert UTC to local time for datetime-local input
+          // datetime-local expects format: YYYY-MM-DDTHH:mm in LOCAL timezone
           const date = new Date(prefillData.timestamp)
-          const formatted = date.toISOString().slice(0, 16)
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          const day = String(date.getDate()).padStart(2, '0')
+          const hours = String(date.getHours()).padStart(2, '0')
+          const minutes = String(date.getMinutes()).padStart(2, '0')
+          const formatted = `${year}-${month}-${day}T${hours}:${minutes}`
           setTimestamp(formatted)
           setUseCustomTime(true)
         }
@@ -104,6 +111,9 @@ export default function LogInput({ isOpen, onClose, onSubmit, prefillData }: Log
     }
 
     if (useCustomTime && timestamp) {
+      // datetime-local gives us local time string, convert to UTC ISO
+      // Create Date from local time string (browser interprets as local)
+      // Then convert to ISO string for storage (converts to UTC)
       data.timestamp = new Date(timestamp).toISOString()
     }
 
