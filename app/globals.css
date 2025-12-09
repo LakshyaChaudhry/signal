@@ -67,3 +67,17 @@ textarea {
   resize: none;
 }
 
+/* PRO badge glow animation */
+@keyframes pro-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.3), 0 0 20px rgba(14, 165, 233, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(14, 165, 233, 0.5), 0 0 30px rgba(14, 165, 233, 0.2);
+  }
+}
+
+.pro-glow {
+  animation: pro-pulse 3s ease-in-out infinite;
+}
+

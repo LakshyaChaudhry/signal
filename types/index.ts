@@ -1,5 +1,13 @@
 // Shared type definitions for the Signal app
 
+// Plan & Pricing types
+export type PlanTier = 'free' | 'pro'
+
+export interface UserPlan {
+  tier: PlanTier
+  // Future: stripe_customer_id, subscription_id, etc.
+}
+
 export interface Day {
   id: string
   wakeTime: string

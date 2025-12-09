@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TimerProvider, useTimer } from '@/lib/timer-context'
+import { PlanProvider, usePlan } from '@/lib/plan-context'
 import { useScrollPosition } from '@/lib/use-scroll'
 import HeroTimer from '@/components/HeroTimer'
 import HeroActions from '@/components/HeroActions'
@@ -15,6 +16,8 @@ import LogInput from '@/components/LogInput'
 import ConfirmationModal from '@/components/ConfirmationModal'
 import PIPTimer from '@/components/PIPTimer'
 import FloatingActionButtons from '@/components/FloatingActionButtons'
+import ProBadge from '@/components/ProBadge'
+import { PlanTier } from '@/types'
 
 interface Day {
   id: string
@@ -35,6 +38,9 @@ interface LogEntry {
 }
 
 function Dashboard() {
+  // Get user plan from context
+  const { plan: userPlan, isPro } = usePlan()
+  
   const [currentDay, setCurrentDay] = useState<Day | null>(null)
   const [currentDayId, setCurrentDayId] = useState<string | null>(null)
   const [previousDayId, setPreviousDayId] = useState<string | null>(null)
@@ -504,18 +510,22 @@ function Dashboard() {
         signalMinutes={currentDay?.signalTotal || 0}
         onPauseResume={handlePauseResume}
         onStop={handleTimerStop}
+        userPlan={userPlan}
       />
 
       {/* Hero Section (Above the fold) */}
       <section className="min-h-screen flex flex-col items-center justify-center px-4 space-y-12">
-        {/* Signal Branding */}
+        {/* Signal Branding with PRO Badge */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="text-white text-3xl font-bold tracking-tight mb-8"
+          className="flex items-center gap-3 mb-8"
         >
-          SIGNAL
+          <span className="text-white text-3xl font-bold tracking-tight">
+            SIGNAL
+          </span>
+          {userPlan === 'pro' && <ProBadge variant="default" animated />}
         </motion.div>
         
         {/* Hero Timer */}
@@ -672,8 +682,10 @@ function Dashboard() {
 
 export default function Home() {
   return (
-    <TimerProvider>
-      <Dashboard />
-    </TimerProvider>
+    <PlanProvider>
+      <TimerProvider>
+        <Dashboard />
+      </TimerProvider>
+    </PlanProvider>
   )
 }
