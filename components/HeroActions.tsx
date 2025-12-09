@@ -6,11 +6,12 @@ interface HeroActionsProps {
   onStartFocus: () => void
   onAddLog: () => void
   onPauseResume: () => void
+  onStop: () => void
   isTimerRunning: boolean
   isTimerPaused: boolean
 }
 
-export default function HeroActions({ onStartFocus, onAddLog, onPauseResume, isTimerRunning, isTimerPaused }: HeroActionsProps) {
+export default function HeroActions({ onStartFocus, onAddLog, onPauseResume, onStop, isTimerRunning, isTimerPaused }: HeroActionsProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -30,18 +31,31 @@ export default function HeroActions({ onStartFocus, onAddLog, onPauseResume, isT
         </motion.button>
       )}
       
-      {/* Pause/Resume Button (when timer running) */}
+      {/* Pause/Resume and Stop Buttons (when timer running) */}
       {isTimerRunning && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onPauseResume}
-          className="flex-1 max-w-xs px-8 py-4 bg-focused text-black border-2 border-focused hover:bg-transparent hover:text-focused hover:border-focused transition-all duration-150 text-sm tracking-wide font-medium"
-        >
-          {isTimerPaused ? '▶ RESUME' : '⏸ PAUSE'}
-        </motion.button>
+        <>
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onPauseResume}
+            className="flex-1 max-w-xs px-8 py-4 bg-focused text-black border-2 border-focused hover:bg-transparent hover:text-focused hover:border-focused transition-all duration-150 text-sm tracking-wide font-medium"
+          >
+            {isTimerPaused ? '▶ RESUME' : '⏸ PAUSE'}
+          </motion.button>
+          
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onStop}
+            className="flex-1 max-w-xs px-8 py-4 bg-wasted text-white border-2 border-wasted hover:bg-transparent hover:text-wasted hover:border-wasted transition-all duration-150 text-sm tracking-wide font-medium"
+          >
+            ⏹ STOP
+          </motion.button>
+        </>
       )}
       
       {/* Add Log Button */}

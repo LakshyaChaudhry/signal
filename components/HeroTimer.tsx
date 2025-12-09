@@ -7,9 +7,10 @@ import { formatDuration } from '@/lib/parser'
 interface HeroTimerProps {
   signalMinutes: number
   isCompact?: boolean
+  onTogglePIP?: () => void
 }
 
-export default function HeroTimer({ signalMinutes, isCompact = false }: HeroTimerProps) {
+export default function HeroTimer({ signalMinutes, isCompact = false, onTogglePIP }: HeroTimerProps) {
   const { isRunning, formattedTime } = useTimer()
   
   // Use timer context time if running, otherwise use signal minutes
@@ -55,6 +56,22 @@ export default function HeroTimer({ signalMinutes, isCompact = false }: HeroTime
         >
           {displayTime}
         </motion.div>
+        
+        {/* PIP Toggle - only show when timer running and not compact */}
+        {isRunning && !isCompact && onTogglePIP && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+            onClick={onTogglePIP}
+            className="absolute -top-2 -right-2 w-6 h-6 text-neutral hover:text-signal transition-colors"
+            title="Enable PIP mode"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M7 7h10v10M17 7l-10 10" />
+            </svg>
+          </motion.button>
+        )}
       </motion.div>
       
       {/* Label */}

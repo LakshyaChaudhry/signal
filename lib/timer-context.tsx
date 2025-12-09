@@ -7,6 +7,7 @@ interface TimerState {
   isPaused: boolean
   startTime: number | null
   elapsedTime: number // milliseconds
+  pausedElapsedTime: number // accumulated time before pause
   currentEntryId: string | null
   currentDayId: string | null
 }
@@ -47,6 +48,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     isPaused: false,
     startTime: null,
     elapsedTime: 0,
+    pausedElapsedTime: 0,
     currentEntryId: null,
     currentDayId: null,
   })
@@ -91,7 +93,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
           if (!prev.startTime) return prev
           
           const now = Date.now()
-          const elapsed = now - prev.startTime
+          // BUG FIX: Add paused elapsed time to current running time
+          const elapsed = prev.pausedElapsedTime + (now - prev.startTime)
           
           return {
             ...prev,
@@ -120,6 +123,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       isPaused: false,
       startTime: now,
       elapsedTime: 0,
+      pausedElapsedTime: 0,
       currentEntryId: entryId,
       currentDayId: dayId,
     })
@@ -129,9 +133,11 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     setTimerState(prev => {
       if (!prev.isRunning || prev.isPaused) return prev
       
+      // BUG FIX: Store accumulated elapsed time when pausing
       return {
         ...prev,
         isPaused: true,
+        pausedElapsedTime: prev.elapsedTime,
       }
     })
   }, [])
@@ -140,11 +146,13 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     setTimerState(prev => {
       if (!prev.isPaused) return prev
       
+      // BUG FIX: Reset startTime but keep pausedElapsedTime
       const now = Date.now()
       return {
         ...prev,
         isPaused: false,
         startTime: now,
+        // pausedElapsedTime stays the same - tick effect will add to it
       }
     })
   }, [])
@@ -158,6 +166,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       isPaused: false,
       startTime: null,
       elapsedTime: 0,
+      pausedElapsedTime: 0,
       currentEntryId: null,
       currentDayId: null,
     })
@@ -171,6 +180,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       isPaused: false,
       startTime: null,
       elapsedTime: 0,
+      pausedElapsedTime: 0,
       currentEntryId: null,
       currentDayId: null,
     })

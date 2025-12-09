@@ -463,7 +463,10 @@ function Dashboard() {
         </motion.div>
         
         {/* Hero Timer */}
-        <HeroTimer signalMinutes={currentDay?.signalTotal || 0} />
+        <HeroTimer 
+          signalMinutes={currentDay?.signalTotal || 0}
+          onTogglePIP={() => setShowPIP(true)}
+        />
 
         {/* Action Buttons (only visible when not scrolled) */}
         {!isScrolled && (
@@ -471,6 +474,7 @@ function Dashboard() {
             onStartFocus={handleTimerStart}
             onAddLog={() => setIsInputOpen(true)}
             onPauseResume={handlePauseResume}
+            onStop={handleTimerStop}
             isTimerRunning={isRunning}
             isTimerPaused={isPaused}
           />
