@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TimerProvider, useTimer } from '@/lib/timer-context'
-import SignalTimer from '@/components/SignalTimer'
+import { useScrollPosition } from '@/lib/use-scroll'
+import HeroTimer from '@/components/HeroTimer'
+import HeroActions from '@/components/HeroActions'
+import DailyProgressBar from '@/components/DailyProgressBar'
+import DayStatusBar from '@/components/DayStatusBar'
+import StickyHeader from '@/components/StickyHeader'
 import TimelineView from '@/components/TimelineView'
 import LogHistory from '@/components/LogHistory'
 import LogInput from '@/components/LogInput'
-import DaySelector from '@/components/DaySelector'
 import ConfirmationModal from '@/components/ConfirmationModal'
-import LiveTimer from '@/components/LiveTimer'
 import PIPTimer from '@/components/PIPTimer'
 
 interface Day {
@@ -44,7 +47,8 @@ function Dashboard() {
   const [showWakePrompt, setShowWakePrompt] = useState(false)
   const [showSleepPrompt, setShowSleepPrompt] = useState(false)
 
-  const { stopTimer, startTimer, isRunning } = useTimer()
+  const { stopTimer, startTimer, pauseTimer, resumeTimer, isRunning, isPaused } = useTimer()
+  const { isScrolled } = useScrollPosition()
 
   // Fetch current day on mount
   useEffect(() => {
@@ -117,6 +121,7 @@ function Dashboard() {
     quality?: string
     timestamp?: string
     duration?: number
+    isDraft?: boolean
   }) => {
     if (!currentDay) return null
 
@@ -142,34 +147,6 @@ function Dashboard() {
     }
   }
 
-  const updateLogEntry = async (entryId: string, data: {
-    content?: string
-    quality?: string
-    duration?: number
-    isDraft?: boolean
-  }) => {
-    try {
-      const res = await fetch('/api/entries', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entryId,
-          ...data,
-        }),
-      })
-      
-      if (!res.ok) throw new Error('Failed to update entry')
-      
-      const result = await res.json()
-      setCurrentDay(result.day)
-      return result.entry
-    } catch (err) {
-      console.error('Error updating entry:', err)
-      setError('Failed to update entry')
-      return null
-    }
-  }
-
   const deleteLogEntry = async (entryId: string) => {
     try {
       const res = await fetch(`/api/entries?entryId=${entryId}`, {
@@ -185,9 +162,8 @@ function Dashboard() {
     }
   }
 
-  // Timer start handler
+  // Timer handlers
   const handleTimerStart = async () => {
-    // Ensure we have a day
     let day = currentDay
     if (!day) {
       const now = new Date().toISOString()
@@ -195,20 +171,17 @@ function Dashboard() {
       if (!day) return
     }
 
-    // Create draft entry
     const draftEntry = await createLogEntry({
       content: 'Working...',
       timestamp: new Date().toISOString(),
       isDraft: true,
-    } as any)
+    })
 
     if (draftEntry && day) {
-      // Start the timer with the draft entry ID
       startTimer(day.id, draftEntry.id)
     }
   }
 
-  // Timer stop handler
   const handleTimerStop = async () => {
     const { duration, entryId } = stopTimer()
     
@@ -217,7 +190,6 @@ function Dashboard() {
       return
     }
 
-    // Pre-fill the log input with timer data
     setLogInputPrefill({
       duration,
       timestamp: new Date().toISOString(),
@@ -225,6 +197,14 @@ function Dashboard() {
     })
     setIsInputOpen(true)
     setShowPIP(false)
+  }
+
+  const handlePauseResume = () => {
+    if (isPaused) {
+      resumeTimer()
+    } else {
+      pauseTimer()
+    }
   }
 
   // Log entry submission
@@ -238,25 +218,21 @@ function Dashboard() {
   }) => {
     setIsInputOpen(false)
 
-    // Handle wake prompt
     if (!currentDay && data.shouldPromptWake) {
       setPendingWakeEntry(data)
       setShowWakePrompt(true)
       return
     }
 
-    // Handle sleep prompt
     if (currentDay && data.shouldPromptSleep) {
       setPendingSleepEntry(data)
       setShowSleepPrompt(true)
       return
     }
 
-    // Regular entry creation
     if (currentDay) {
       await createLogEntry(data)
     } else {
-      // No day exists - create one
       const now = new Date().toISOString()
       const newDay = await createNewDay(now)
       if (newDay) {
@@ -264,7 +240,6 @@ function Dashboard() {
       }
     }
 
-    // Clear prefill data
     setLogInputPrefill(null)
   }
 
@@ -288,11 +263,9 @@ function Dashboard() {
 
   const handleWakeCancel = () => {
     setShowWakePrompt(false)
-    
     if (pendingWakeEntry && currentDay) {
       createLogEntry(pendingWakeEntry)
     }
-    
     setPendingWakeEntry(null)
   }
 
@@ -301,12 +274,10 @@ function Dashboard() {
     
     if (pendingSleepEntry && currentDay) {
       const now = new Date().toISOString()
-      
       await createLogEntry({
         ...pendingSleepEntry,
         timestamp: now,
       })
-      
       await closeCurrentDay(now)
     }
     
@@ -315,11 +286,9 @@ function Dashboard() {
 
   const handleSleepCancel = () => {
     setShowSleepPrompt(false)
-    
     if (pendingSleepEntry && currentDay) {
       createLogEntry(pendingSleepEntry)
     }
-    
     setPendingSleepEntry(null)
   }
 
@@ -334,130 +303,148 @@ function Dashboard() {
   }
 
   return (
-    <main className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto space-y-0">
-        {/* Header */}
-        <div className="flex justify-between items-center py-8">
-          <motion.h1 
-            className="text-white text-2xl tracking-tight font-bold"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            SIGNAL
-          </motion.h1>
-          
-          <div className="text-neutral text-xs tracking-widest">
-            PRODUCTIVITY TRACKING V2
-          </div>
-        </div>
+    <div className="min-h-screen bg-black">
+      {/* Day Status Bar */}
+      <DayStatusBar currentDay={currentDay} />
 
-        {/* Error display */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="border-2 border-red-500 bg-red-500 bg-opacity-10 p-4 mb-6"
-          >
-            <div className="text-red-500 text-sm">{error}</div>
-          </motion.div>
-        )}
+      {/* Sticky Header (visible when scrolled) */}
+      <StickyHeader
+        isVisible={isScrolled}
+        signalMinutes={currentDay?.signalTotal || 0}
+        onPauseResume={handlePauseResume}
+        onStop={handleTimerStop}
+      />
 
-        {/* Day Selector */}
-        {currentDay && (
-          <DaySelector
-            currentDay={currentDay}
-            hasNext={false}
-            hasPrevious={false}
-          />
-        )}
+      {/* Hero Section (Above the fold) */}
+      <section className="min-h-screen flex flex-col items-center justify-center px-4 space-y-12">
+        {/* Hero Timer */}
+        <HeroTimer signalMinutes={currentDay?.signalTotal || 0} />
 
-        {/* Signal Timer */}
-        <SignalTimer
-          signalMinutes={currentDay?.signalTotal || 0}
-          wastedMinutes={currentDay?.wastedTotal || 0}
+        {/* Action Buttons */}
+        <HeroActions
+          onStartFocus={handleTimerStart}
+          onAddLog={() => setIsInputOpen(true)}
+          isTimerRunning={isRunning}
         />
 
-        {/* Timeline */}
+        {/* Daily Progress Bar */}
         {currentDay && (
-          <TimelineView
+          <DailyProgressBar
             wakeTime={currentDay.wakeTime}
             sleepTime={currentDay.sleepTime}
             entries={currentDay.entries || []}
           />
         )}
 
-        {/* Log History */}
-        <LogHistory
-          entries={currentDay?.entries || []}
-          onDeleteEntry={deleteLogEntry}
-        />
-
-        {/* Live Timer (bottom-left) */}
-        <LiveTimer
-          onStart={handleTimerStart}
-          onStop={handleTimerStop}
-          onTogglePIP={() => setShowPIP(!showPIP)}
-          isPIPVisible={showPIP}
-        />
-
-        {/* PIP Timer (when minimized) */}
-        <AnimatePresence>
-          {showPIP && isRunning && (
-            <PIPTimer
-              onStop={handleTimerStop}
-              onMaximize={() => setShowPIP(false)}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* New Log Entry Button (bottom-right) */}
-        {!isRunning && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsInputOpen(true)}
-            className="fixed bottom-8 right-8 px-8 py-4 bg-signal text-black border-2 border-signal hover:bg-transparent hover:text-signal transition-colors duration-150 text-sm tracking-wide font-medium shadow-xl"
+        {/* Scroll indicator */}
+        {!isScrolled && currentDay && currentDay.entries.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1, duration: 0.5 }}
+            className="absolute bottom-8 text-neutral text-xs tracking-widest"
           >
-            + NEW LOG ENTRY
-          </motion.button>
+            ↓ SCROLL FOR DETAILS
+          </motion.div>
         )}
+      </section>
 
-        {/* Log Input Modal */}
-        <LogInput
-          isOpen={isInputOpen}
-          onClose={() => {
-            setIsInputOpen(false)
-            setLogInputPrefill(null)
-          }}
-          onSubmit={handleLogSubmit}
-          prefillData={logInputPrefill}
-        />
+      {/* Details Section (Below the fold - revealed on scroll) */}
+      {currentDay && currentDay.entries.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isScrolled ? 1 : 0.3 }}
+          transition={{ duration: 0.4 }}
+          className="max-w-6xl mx-auto px-8 py-16 space-y-12"
+        >
+          {/* Section Title */}
+          <div className="text-center">
+            <h2 className="text-white text-xl tracking-tight font-bold mb-2">
+              TODAY'S LOG
+            </h2>
+            <div className="text-neutral text-xs tracking-widest">
+              DETAILED BREAKDOWN
+            </div>
+          </div>
 
-        {/* Wake Confirmation Modal */}
-        <ConfirmationModal
-          isOpen={showWakePrompt}
-          title="DAY BOUNDARY"
-          message="Mark this as your wake-up time and start a new day?"
-          onConfirm={handleWakeConfirm}
-          onCancel={handleWakeCancel}
-          confirmText="START NEW DAY"
-          cancelText="NO, JUST LOG IT"
-        />
+          {/* Timeline */}
+          <TimelineView
+            wakeTime={currentDay.wakeTime}
+            sleepTime={currentDay.sleepTime}
+            entries={currentDay.entries || []}
+          />
 
-        {/* Sleep Confirmation Modal */}
-        <ConfirmationModal
-          isOpen={showSleepPrompt}
-          title="DAY BOUNDARY"
-          message="Mark this as your sleep time and close the current day?"
-          onConfirm={handleSleepConfirm}
-          onCancel={handleSleepCancel}
-          confirmText="CLOSE DAY"
-          cancelText="NO, KEEP OPEN"
-        />
-      </div>
-    </main>
+          {/* Log History */}
+          <LogHistory
+            entries={currentDay.entries || []}
+            onDeleteEntry={deleteLogEntry}
+          />
+        </motion.section>
+      )}
+
+      {/* Error Display */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 border-2 border-red-500 bg-black p-4"
+          >
+            <div className="text-red-500 text-sm">{error}</div>
+            <button
+              onClick={() => setError(null)}
+              className="mt-2 text-xs text-neutral hover:text-white"
+            >
+              DISMISS
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PIP Timer */}
+      <AnimatePresence>
+        {showPIP && isRunning && (
+          <PIPTimer
+            onStop={handleTimerStop}
+            onMaximize={() => setShowPIP(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Log Input Modal */}
+      <LogInput
+        isOpen={isInputOpen}
+        onClose={() => {
+          setIsInputOpen(false)
+          setLogInputPrefill(null)
+        }}
+        onSubmit={handleLogSubmit}
+        prefillData={logInputPrefill}
+      />
+
+      {/* Wake Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showWakePrompt}
+        title="DAY BOUNDARY"
+        message="Mark this as your wake-up time and start a new day?"
+        onConfirm={handleWakeConfirm}
+        onCancel={handleWakeCancel}
+        confirmText="START NEW DAY"
+        cancelText="NO, JUST LOG IT"
+      />
+
+      {/* Sleep Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showSleepPrompt}
+        title="DAY BOUNDARY"
+        message="Mark this as your sleep time and close the current day?"
+        onConfirm={handleSleepConfirm}
+        onCancel={handleSleepCancel}
+        confirmText="CLOSE DAY"
+        cancelText="NO, KEEP OPEN"
+      />
+    </div>
   )
 }
 
