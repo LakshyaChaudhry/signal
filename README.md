@@ -10,10 +10,10 @@ Days are defined by your wake-sleep cycle, not arbitrary calendar boundaries. Yo
 
 ## Features
 
-### V2 (Current)
+### V0.1 (Current)
 
 - **Live Timer**: Real-time stopwatch that tracks work as it happens with pause/resume
-- **Picture-in-Picture Mode**: Draggable, resizable floating timer window
+- **Picture-in-Picture Mode**: Draggable, resizable floating timer window - within browser window boundaries only ATM
 - **5-Level Quality System**: Deep Work, Focused, Neutral, Distracted, Wasted (color-coded)
 - **Auto-Draft Entries**: Timer creates placeholder entries (Whoop-style activity detection)
 - **Enhanced Log Entry**: Quality dropdown, custom timestamps, manual duration override

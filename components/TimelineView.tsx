@@ -106,6 +106,36 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
     return (durationMinutes / totalMinutes) * 100
   }
 
+  const getBorderColor = (type: string, quality?: string) => {
+    // Use quality-based border colors if available
+    if (quality) {
+      switch (quality) {
+        case 'deep':
+          return 'border-deep'
+        case 'focused':
+          return 'border-focused'
+        case 'neutral':
+          return 'border-medium'
+        case 'distracted':
+          return 'border-distracted'
+        case 'wasted':
+          return 'border-lost'
+        default:
+          return 'border-neutral'
+      }
+    }
+    
+    // Fallback to old type-based border colors
+    switch (type) {
+      case 'signal':
+        return 'border-signal'
+      case 'wasted':
+        return 'border-wasted'
+      default:
+        return 'border-neutral'
+    }
+  }
+
   if (totalMinutes <= 0) {
     return (
       <div className="py-12">
@@ -179,33 +209,30 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
       </div>
 
       {/* Selected block details */}
-      {selectedBlock && (
+      {selectedBlock && blocks.filter(b => b.id === selectedBlock).map(block => (
         <motion.div
+          key={block.id}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="border-2 border-signal p-6 space-y-2"
+          className={`border-2 ${getBorderColor(block.type, block.quality || undefined)} p-6 space-y-2`}
         >
-          {blocks
-            .filter(b => b.id === selectedBlock)
-            .map(block => (
-              <div key={block.id} className="space-y-2">
-                <div className="text-signal text-sm tracking-wide">
-                  {block.quality ? block.quality.toUpperCase() : block.type.toUpperCase()} • {block.durationMinutes} MINUTES
-                </div>
-                <div className="text-white text-base">
-                  {block.content}
-                </div>
-                <div className="text-neutral text-xs">
-                  {new Date(block.timestamp).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                  })}
-                </div>
-              </div>
-            ))}
+          <div className="space-y-2">
+            <div className={`text-sm tracking-wide ${getBorderColor(block.type, block.quality || undefined).replace('border-', 'text-')}`}>
+              {block.quality ? block.quality.toUpperCase() : block.type.toUpperCase()} • {block.durationMinutes} MINUTES
+            </div>
+            <div className="text-white text-base">
+              {block.content}
+            </div>
+            <div className="text-neutral text-xs">
+              {new Date(block.timestamp).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              })}
+            </div>
+          </div>
         </motion.div>
-      )}
+      ))}
 
       {/* Legend */}
       <div className="flex justify-center gap-4 text-xs flex-wrap">
