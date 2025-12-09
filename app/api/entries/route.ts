@@ -178,28 +178,46 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    // If converting from draft to final, update day totals
-    if (existingEntry.isDraft && isDraft === false && duration) {
+    // Recalculate day totals if duration or type changed
+    const durationChanged = duration !== undefined && duration !== existingEntry.duration
+    const typeChanged = entryType !== existingEntry.type
+    const becomingFinal = existingEntry.isDraft && isDraft === false
+    
+    if ((durationChanged || typeChanged || becomingFinal) && !updatedEntry.isDraft) {
       const day = await prisma.day.findUnique({
         where: { id: updatedEntry.dayId },
       })
       
       if (day) {
-        if (entryType === 'signal') {
-          await prisma.day.update({
-            where: { id: updatedEntry.dayId },
-            data: {
-              signalTotal: day.signalTotal + duration,
-            },
-          })
-        } else if (entryType === 'wasted') {
-          await prisma.day.update({
-            where: { id: updatedEntry.dayId },
-            data: {
-              wastedTotal: day.wastedTotal + duration,
-            },
-          })
+        let newSignalTotal = day.signalTotal
+        let newWastedTotal = day.wastedTotal
+        
+        // Remove old contribution from totals (if entry was not a draft)
+        if (!existingEntry.isDraft && existingEntry.duration) {
+          if (existingEntry.type === 'signal') {
+            newSignalTotal -= existingEntry.duration
+          } else if (existingEntry.type === 'wasted') {
+            newWastedTotal -= existingEntry.duration
+          }
         }
+        
+        // Add new contribution to totals
+        if (updatedEntry.duration) {
+          if (entryType === 'signal') {
+            newSignalTotal += updatedEntry.duration
+          } else if (entryType === 'wasted') {
+            newWastedTotal += updatedEntry.duration
+          }
+        }
+        
+        // Update day with recalculated totals
+        await prisma.day.update({
+          where: { id: updatedEntry.dayId },
+          data: {
+            signalTotal: Math.max(0, newSignalTotal),
+            wastedTotal: Math.max(0, newWastedTotal),
+          },
+        })
       }
     }
 

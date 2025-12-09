@@ -61,20 +61,16 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Only load once, even in strict mode
     if (hasLoadedFromStorage.current) {
-      console.log('[Timer Context] Already loaded, skipping')
       return
     }
     
     const savedState = localStorage.getItem(STORAGE_KEY)
-    console.log('[Timer Context] Loading from localStorage:', savedState)
     if (savedState) {
       try {
         const parsed = JSON.parse(savedState) as TimerState
-        console.log('[Timer Context] Parsed state:', parsed)
         
         // If timer was running when page closed, recalculate elapsed time
         if (parsed.isRunning && !parsed.isPaused && parsed.startTime) {
-          console.log('[Timer Context] Timer was running - restoring with recalculated time...')
           const now = Date.now()
           
           // Calculate total elapsed time including time while page was closed
@@ -89,7 +85,6 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
             elapsedTime: totalElapsed,
             startTime: now,
           })
-          console.log('[Timer Context] Timer restored successfully with elapsed:', totalElapsed, 'ms')
         } else {
           // Timer was paused or not running, restore as-is
           setTimerState(parsed)
@@ -97,8 +92,6 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Failed to parse timer state from localStorage:', error)
       }
-    } else {
-      console.log('[Timer Context] No saved state found')
     }
     
     // Mark that we've loaded from storage
@@ -108,7 +101,6 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   // Save state to localStorage whenever it changes (but not during initial load)
   useEffect(() => {
     if (hasLoadedFromStorage.current) {
-      console.log('[Timer Context] Saving to localStorage:', timerState)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(timerState))
     }
   }, [timerState])
