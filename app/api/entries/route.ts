@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { entryId, content, quality, duration, isDraft } = body
+    const { entryId, content, quality, duration, isDraft, timestamp } = body
 
     if (!entryId) {
       return NextResponse.json(
@@ -173,6 +173,7 @@ export async function PATCH(request: NextRequest) {
         ...(quality !== undefined && { quality }),
         ...(duration !== undefined && { duration }),
         ...(isDraft !== undefined && { isDraft }),
+        ...(timestamp !== undefined && { timestamp: new Date(timestamp) }),
         type: entryType,
       },
     })

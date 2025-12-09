@@ -198,6 +198,7 @@ function Dashboard() {
     content?: string
     quality?: string
     duration?: number
+    timestamp?: string
   }) => {
     try {
       const res = await fetch('/api/entries', {
@@ -381,6 +382,7 @@ function Dashboard() {
         content: data.content,
         quality: data.quality,
         duration: data.duration,
+        timestamp: data.timestamp, // Include timestamp in update
       })
       setEditingEntry(null)
       setLogInputPrefill(null)
