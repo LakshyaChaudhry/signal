@@ -1,15 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-
-interface LogEntry {
-  id: string
-  timestamp: string
-  content: string
-  type: string
-  duration: number | null
-  quality?: string | null
-}
+import { LogEntry } from '@/types'
 
 interface LogHistoryProps {
   entries: LogEntry[]
@@ -61,7 +53,7 @@ export default function LogHistory({ entries, onDeleteEntry, onEditEntry }: LogH
     return (
       <div className="py-12">
         <div className="text-neutral text-center text-sm">
-          No entries yet. Click "New Log Entry" to get started.
+          No entries yet. Click &quot;New Log Entry&quot; to get started.
         </div>
       </div>
     )

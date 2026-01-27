@@ -2,12 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-
-interface Day {
-  id: string
-  wakeTime: string
-  sleepTime: string | null
-}
+import { Day } from '@/types'
 
 interface DayStatusBarProps {
   currentDay: Day | null

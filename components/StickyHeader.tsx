@@ -1,8 +1,6 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { useTimer } from '@/lib/timer-context'
-import HeroTimer from './HeroTimer'
 import ProBadge from './ProBadge'
 import { PlanTier } from '@/types'
 
@@ -15,7 +13,6 @@ interface StickyHeaderProps {
 }
 
 export default function StickyHeader({ isVisible, signalMinutes, onPauseResume, onStop, userPlan }: StickyHeaderProps) {
-  const { isRunning, isPaused } = useTimer()
 
   return (
     <AnimatePresence>

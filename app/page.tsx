@@ -17,29 +17,11 @@ import ConfirmationModal from '@/components/ConfirmationModal'
 import PIPTimer from '@/components/PIPTimer'
 import FloatingActionButtons from '@/components/FloatingActionButtons'
 import ProBadge from '@/components/ProBadge'
-import { PlanTier } from '@/types'
-
-interface Day {
-  id: string
-  wakeTime: string
-  sleepTime: string | null
-  signalTotal: number
-  wastedTotal: number
-  entries: LogEntry[]
-}
-
-interface LogEntry {
-  id: string
-  timestamp: string
-  content: string
-  type: string
-  duration: number | null
-  quality?: string | null
-}
+import { Day, LogEntry } from '@/types'
 
 function Dashboard() {
   // Get user plan from context
-  const { plan: userPlan, isPro } = usePlan()
+  const { plan: userPlan } = usePlan()
   
   const [currentDay, setCurrentDay] = useState<Day | null>(null)
   const [currentDayId, setCurrentDayId] = useState<string | null>(null)
@@ -49,7 +31,12 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showPIP, setShowPIP] = useState(false)
-  const [logInputPrefill, setLogInputPrefill] = useState<any>(null)
+  const [logInputPrefill, setLogInputPrefill] = useState<{
+    content?: string
+    quality?: string
+    duration?: number
+    timestamp?: string
+  } | undefined>(undefined)
   const [editingEntry, setEditingEntry] = useState<LogEntry | null>(null)
   
   // Day boundary prompts
@@ -393,7 +380,7 @@ function Dashboard() {
         timestamp: data.timestamp, // Include timestamp in update
       })
       setEditingEntry(null)
-      setLogInputPrefill(null)
+      setLogInputPrefill(undefined)
       return
     }
 
@@ -421,7 +408,7 @@ function Dashboard() {
       }
     }
 
-    setLogInputPrefill(null)
+    setLogInputPrefill(undefined)
   }
 
   const handleWakeConfirm = async () => {
@@ -579,7 +566,7 @@ function Dashboard() {
           {/* Section Title */}
           <div className="text-center">
             <h2 className="text-white text-xl tracking-tight font-bold mb-2">
-              TODAY'S LOG
+              TODAY&apos;S LOG
             </h2>
             <div className="text-neutral text-xs tracking-widest">
               DETAILED BREAKDOWN
@@ -648,7 +635,7 @@ function Dashboard() {
         isOpen={isInputOpen}
         onClose={() => {
           setIsInputOpen(false)
-          setLogInputPrefill(null)
+          setLogInputPrefill(undefined)
           setEditingEntry(null)
         }}
         onSubmit={handleLogSubmit}

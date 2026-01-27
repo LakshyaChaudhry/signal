@@ -2,30 +2,12 @@
 
 import { motion } from 'framer-motion'
 import { useState } from 'react'
-
-interface LogEntry {
-  id: string
-  timestamp: string
-  content: string
-  type: string
-  duration: number | null
-  quality?: string | null
-}
+import { LogEntry, TimelineBlock } from '@/types'
 
 interface TimelineViewProps {
   wakeTime: string
   sleepTime?: string | null
   entries: LogEntry[]
-}
-
-interface TimelineBlock {
-  id: string
-  startMinute: number
-  durationMinutes: number
-  type: string
-  quality?: string | null
-  content: string
-  timestamp: string
 }
 
 export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineViewProps) {
@@ -68,34 +50,18 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
     })
   }
 
-  const getBlockColor = (type: string, quality?: string) => {
-    // Use quality-based colors if available
-    if (quality) {
-      switch (quality) {
-        case 'deep':
-          return 'bg-deep'
-        case 'focused':
-          return 'bg-focused'
-        case 'neutral':
-          return 'bg-medium'
-        case 'distracted':
-          return 'bg-distracted'
-        case 'wasted':
-          return 'bg-lost'
-        default:
-          return 'bg-neutral'
-      }
+  // Unified color mapping for quality and type
+  const getColorClasses = (type: string, quality?: string | null) => {
+    const colorMap: Record<string, { bg: string; border: string; text: string }> = {
+      deep: { bg: 'bg-deep', border: 'border-deep', text: 'text-deep' },
+      focused: { bg: 'bg-focused', border: 'border-focused', text: 'text-focused' },
+      neutral: { bg: 'bg-medium', border: 'border-medium', text: 'text-medium' },
+      distracted: { bg: 'bg-distracted', border: 'border-distracted', text: 'text-distracted' },
+      wasted: { bg: 'bg-lost', border: 'border-lost', text: 'text-lost' },
+      signal: { bg: 'bg-signal', border: 'border-signal', text: 'text-signal' },
     }
-    
-    // Fallback to old type-based colors
-    switch (type) {
-      case 'signal':
-        return 'bg-signal'
-      case 'wasted':
-        return 'bg-wasted'
-      default:
-        return 'bg-neutral'
-    }
+    const key = quality || type
+    return colorMap[key] || { bg: 'bg-neutral', border: 'border-neutral', text: 'text-neutral' }
   }
 
   const getBlockPosition = (startMinute: number) => {
@@ -104,36 +70,6 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
 
   const getBlockWidth = (durationMinutes: number) => {
     return (durationMinutes / totalMinutes) * 100
-  }
-
-  const getBorderColor = (type: string, quality?: string) => {
-    // Use quality-based border colors if available
-    if (quality) {
-      switch (quality) {
-        case 'deep':
-          return 'border-deep'
-        case 'focused':
-          return 'border-focused'
-        case 'neutral':
-          return 'border-medium'
-        case 'distracted':
-          return 'border-distracted'
-        case 'wasted':
-          return 'border-lost'
-        default:
-          return 'border-neutral'
-      }
-    }
-    
-    // Fallback to old type-based border colors
-    switch (type) {
-      case 'signal':
-        return 'border-signal'
-      case 'wasted':
-        return 'border-wasted'
-      default:
-        return 'border-neutral'
-    }
   }
 
   if (totalMinutes <= 0) {
@@ -183,7 +119,7 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
                 delay: index * 0.05,
                 ease: 'easeOut' 
               }}
-              className={`absolute h-full ${getBlockColor(block.type, block.quality || undefined)} cursor-pointer hover:opacity-80 transition-opacity`}
+              className={`absolute h-full ${getColorClasses(block.type, block.quality).bg} cursor-pointer hover:opacity-80 transition-opacity`}
               style={{ left: `${getBlockPosition(block.startMinute)}%` }}
               onClick={() => setSelectedBlock(selectedBlock === block.id ? null : block.id)}
             >
@@ -214,10 +150,10 @@ export default function TimelineView({ wakeTime, sleepTime, entries }: TimelineV
           key={block.id}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`border-2 ${getBorderColor(block.type, block.quality || undefined)} p-6 space-y-2`}
+          className={`border-2 ${getColorClasses(block.type, block.quality).border} p-6 space-y-2`}
         >
           <div className="space-y-2">
-            <div className={`text-sm tracking-wide ${getBorderColor(block.type, block.quality || undefined).replace('border-', 'text-')}`}>
+            <div className={`text-sm tracking-wide ${getColorClasses(block.type, block.quality).text}`}>
               {block.quality ? block.quality.toUpperCase() : block.type.toUpperCase()} • {block.durationMinutes} MINUTES
             </div>
             <div className="text-white text-base">

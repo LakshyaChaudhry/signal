@@ -2,14 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { useMemo, useState } from 'react'
-
-interface LogEntry {
-  id: string
-  timestamp: string
-  duration: number | null
-  quality?: string | null
-  type: string
-}
+import { LogEntry } from '@/types'
 
 interface DailyProgressBarProps {
   wakeTime: string

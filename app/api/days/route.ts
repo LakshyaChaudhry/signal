@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Helper to compute navigation IDs for a given day
+async function getNavigationIds(dayId: string) {
+  const allDays = await prisma.day.findMany({
+    orderBy: { wakeTime: 'desc' },
+    select: { id: true },
+  })
+
+  const currentIndex = allDays.findIndex(d => d.id === dayId)
+  const previousDayId = (currentIndex >= 0 && currentIndex < allDays.length - 1)
+    ? allDays[currentIndex + 1].id
+    : null
+  const nextDayId = (currentIndex > 0)
+    ? allDays[currentIndex - 1].id
+    : null
+
+  return { previousDayId, nextDayId }
+}
+
 // GET current day (or most recent open day) or specific day by ID
 export async function GET(request: NextRequest) {
   try {
@@ -21,35 +39,12 @@ export async function GET(request: NextRequest) {
         },
       })
       
-      // BUG FIX: Validate day exists before computing navigation
       if (!day) {
-        return NextResponse.json({ 
-          error: 'Day not found' 
-        }, { status: 404 })
+        return NextResponse.json({ error: 'Day not found' }, { status: 404 })
       }
-      
-      // Get all days sorted by wake time for navigation
-      const allDays = await prisma.day.findMany({
-        orderBy: { wakeTime: 'desc' },
-        select: { id: true, wakeTime: true },
-      })
-      
-      // Find current day index and determine prev/next
-      const currentIndex = allDays.findIndex(d => d.id === dayId)
-      
-      // BUG FIX: Validate index before accessing array
-      const previousDayId = (currentIndex >= 0 && currentIndex < allDays.length - 1) 
-        ? allDays[currentIndex + 1].id 
-        : null
-      const nextDayId = (currentIndex > 0) 
-        ? allDays[currentIndex - 1].id 
-        : null
-      
-      return NextResponse.json({ 
-        day, 
-        previousDayId,
-        nextDayId 
-      })
+
+      const { previousDayId, nextDayId } = await getNavigationIds(dayId)
+      return NextResponse.json({ day, previousDayId, nextDayId })
     }
     
     // Otherwise, get current day (open or most recent)
@@ -85,21 +80,8 @@ export async function GET(request: NextRequest) {
     }
     
     // Get nav info if current day exists
-    let previousDayId = null
-    let nextDayId = null
-    
-    if (currentDay) {
-      const allDays = await prisma.day.findMany({
-        orderBy: { wakeTime: 'desc' },
-        select: { id: true, wakeTime: true },
-      })
-      
-      const currentIndex = allDays.findIndex(d => d.id === currentDay!.id)
-      previousDayId = currentIndex < allDays.length - 1 ? allDays[currentIndex + 1].id : null
-      nextDayId = currentIndex > 0 ? allDays[currentIndex - 1].id : null
-    }
-
-    return NextResponse.json({ day: currentDay, previousDayId, nextDayId })
+    const navIds = currentDay ? await getNavigationIds(currentDay.id) : { previousDayId: null, nextDayId: null }
+    return NextResponse.json({ day: currentDay, ...navIds })
   } catch (error) {
     console.error('Error fetching current day:', error)
     return NextResponse.json(
@@ -149,25 +131,12 @@ export async function POST(request: NextRequest) {
 
     // If there's an open day, return it instead of creating a new one
     if (existingOpenDay) {
-      // Get navigation info
-      const allDays = await prisma.day.findMany({
-        orderBy: { wakeTime: 'desc' },
-        select: { id: true, wakeTime: true },
-      })
-      
-      const currentIndex = allDays.findIndex(d => d.id === existingOpenDay.id)
-      const previousDayId = (currentIndex >= 0 && currentIndex < allDays.length - 1) 
-        ? allDays[currentIndex + 1].id 
-        : null
-      const nextDayId = (currentIndex > 0) 
-        ? allDays[currentIndex - 1].id 
-        : null
-
-      return NextResponse.json({ 
+      const { previousDayId, nextDayId } = await getNavigationIds(existingOpenDay.id)
+      return NextResponse.json({
         day: existingOpenDay,
         previousDayId,
         nextDayId,
-        reopened: true // Flag to indicate we returned an existing day
+        reopened: true
       }, { status: 200 })
     }
 
@@ -208,21 +177,8 @@ export async function POST(request: NextRequest) {
           },
         })
 
-        // Get navigation info
-        const allDays = await prisma.day.findMany({
-          orderBy: { wakeTime: 'desc' },
-          select: { id: true, wakeTime: true },
-        })
-        
-        const currentIndex = allDays.findIndex(d => d.id === reopenedDay.id)
-        const previousDayId = (currentIndex >= 0 && currentIndex < allDays.length - 1) 
-          ? allDays[currentIndex + 1].id 
-          : null
-        const nextDayId = (currentIndex > 0) 
-          ? allDays[currentIndex - 1].id 
-          : null
-
-        return NextResponse.json({ 
+        const { previousDayId, nextDayId } = await getNavigationIds(reopenedDay.id)
+        return NextResponse.json({
           day: reopenedDay,
           previousDayId,
           nextDayId,
@@ -254,25 +210,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // BUG FIX: Compute navigation IDs for new day
-    const allDays = await prisma.day.findMany({
-      orderBy: { wakeTime: 'desc' },
-      select: { id: true, wakeTime: true },
-    })
-    
-    const currentIndex = allDays.findIndex(d => d.id === newDay.id)
-    const previousDayId = (currentIndex >= 0 && currentIndex < allDays.length - 1) 
-      ? allDays[currentIndex + 1].id 
-      : null
-    const nextDayId = (currentIndex > 0) 
-      ? allDays[currentIndex - 1].id 
-      : null
-
-    return NextResponse.json({ 
-      day: newDay,
-      previousDayId,
-      nextDayId
-    }, { status: 201 })
+    const { previousDayId, nextDayId } = await getNavigationIds(newDay.id)
+    return NextResponse.json({ day: newDay, previousDayId, nextDayId }, { status: 201 })
   } catch (error) {
     console.error('Error creating day:', error)
     return NextResponse.json(
@@ -314,25 +253,8 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    // BUG FIX: Compute navigation IDs after update
-    const allDays = await prisma.day.findMany({
-      orderBy: { wakeTime: 'desc' },
-      select: { id: true, wakeTime: true },
-    })
-    
-    const currentIndex = allDays.findIndex(d => d.id === updatedDay.id)
-    const previousDayId = (currentIndex >= 0 && currentIndex < allDays.length - 1) 
-      ? allDays[currentIndex + 1].id 
-      : null
-    const nextDayId = (currentIndex > 0) 
-      ? allDays[currentIndex - 1].id 
-      : null
-
-    return NextResponse.json({ 
-      day: updatedDay,
-      previousDayId,
-      nextDayId
-    })
+    const { previousDayId, nextDayId } = await getNavigationIds(updatedDay.id)
+    return NextResponse.json({ day: updatedDay, previousDayId, nextDayId })
   } catch (error) {
     console.error('Error updating day:', error)
     return NextResponse.json(

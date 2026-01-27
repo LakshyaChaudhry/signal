@@ -1,8 +1,4 @@
-export interface ParsedEntry {
-  type: 'wake' | 'sleep' | 'signal' | 'wasted' | 'neutral'
-  duration: number | null
-  content: string
-}
+import { ParsedEntry } from '@/types'
 
 /**
  * Parse log entry content to extract type and duration
@@ -93,12 +89,5 @@ export function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   return `${hours}:${mins.toString().padStart(2, '0')}`
-}
-
-/**
- * Calculate time difference between two dates in minutes
- */
-export function getMinutesDifference(start: Date, end: Date): number {
-  return Math.floor((end.getTime() - start.getTime()) / (1000 * 60))
 }
 
