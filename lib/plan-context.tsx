@@ -17,7 +17,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   // 1. Auth session (Clerk, NextAuth, etc.)
   // 2. Database user.plan field
   // 3. Stripe subscription status
-  const [plan, setPlan] = useState<PlanTier>('pro')
+  const [plan, setPlan] = useState<PlanTier>('free')
 
   const value = {
     plan,
