@@ -69,7 +69,7 @@ export default function FloatingActionButtons({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onAddLog}
-            className="fixed bottom-8 right-8 z-30 px-8 py-4 bg-transparent border-2 border-neutral text-neutral hover:bg-white hover:border-signal hover:text-black transition-all duration-150 text-sm tracking-wide font-medium"
+            className="fixed bottom-8 right-44 z-30 px-8 py-4 bg-transparent border-2 border-neutral text-neutral hover:bg-white hover:border-signal hover:text-black transition-all duration-150 text-sm tracking-wide font-medium"
           >
             + ADD LOG
           </motion.button>

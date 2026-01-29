@@ -48,3 +48,22 @@ export interface TimelineBlock {
   timestamp: string
 }
 
+// AI Coach types
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+}
+
+export interface TrendsSummary {
+  totalDays: number
+  avgSignalMinutes: number
+  avgWastedMinutes: number
+  signalToWastedRatio: number
+  peakHours: string[]
+  bestDay: { date: string; signal: number } | null
+  worstDay: { date: string; wasted: number } | null
+  recentTrend: 'improving' | 'declining' | 'stable'
+}
+

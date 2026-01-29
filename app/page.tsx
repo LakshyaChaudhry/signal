@@ -17,6 +17,10 @@ import ConfirmationModal from '@/components/ConfirmationModal'
 import PIPTimer from '@/components/PIPTimer'
 import FloatingActionButtons from '@/components/FloatingActionButtons'
 import ProBadge from '@/components/ProBadge'
+import AIChatButton from '@/components/AIChatButton'
+import AIChatPanel from '@/components/AIChatPanel'
+import { ChatProvider } from '@/lib/chat-context'
+import { hasFeature } from '@/lib/features'
 import { Day, LogEntry } from '@/types'
 
 function Dashboard() {
@@ -600,6 +604,14 @@ function Dashboard() {
         onTogglePIP={() => setShowPIP(true)}
       />
 
+      {/* AI Coach Chat */}
+      {hasFeature(userPlan, 'aiCoach') && (
+        <>
+          <AIChatButton />
+          <AIChatPanel dayId={currentDayId} />
+        </>
+      )}
+
       {/* Error Display */}
       <AnimatePresence>
         {error && (
@@ -671,7 +683,9 @@ export default function Home() {
   return (
     <PlanProvider>
       <TimerProvider>
-        <Dashboard />
+        <ChatProvider>
+          <Dashboard />
+        </ChatProvider>
       </TimerProvider>
     </PlanProvider>
   )

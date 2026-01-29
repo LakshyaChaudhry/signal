@@ -62,10 +62,10 @@ export const FEATURES = {
  * Check if user has access to a Pro feature
  */
 export function hasFeature(
-  plan: PlanTier, 
+  plan: PlanTier,
   feature: keyof typeof FEATURES.pro
 ): boolean {
-  return plan === 'pro'
+  return true // All features enabled for now
 }
 
 /**
